@@ -5,8 +5,10 @@ import numpy as np
 from scipy import sparse
 from pcnn.data.scattering_utils import compute_scattering_features
 import torch_geometric.transforms as T
-from torch_geometric.transforms.knn_graph import KNNGraph
+from torch_geometric.transforms import KNNGraph
 import torch_geometric
+
+from torch_geometric.transforms.base_transform import BaseTransform
 
 def laplacian_collate_fn(batch, follow_batch = None, exclude_keys = None):
     b = Batch.from_data_list(batch, follow_batch,
@@ -44,8 +46,18 @@ def compute_kernel(D, eps, d):
     K = np.exp(-D/eps) * np.power(eps, -d/2)
     return K
 
-def laplacian_epsilon_transform(eps, K, d = 2, eps_quantile=0.5, **kwargs):
-    return lambda data : laplacian_epsilon(data, eps, K, d, eps_quantile)
+
+class laplacian_epsilon_transform(BaseTransform):
+    def __init__(self,eps,K,d=2,eps_quantile = 0.5, **kwargs):
+        self.eps = eps
+        self.K = K
+        self.d = d
+        self.eps_quantile = eps_quantile
+    def forward(self,data):
+        return laplacian_epsilon(data, self.eps, self.K, self.d, self.eps_quantile)
+    
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}(eps={self.eps}, K={self.K},d={self.d}, eps_quantile={self.eps_quantile})'
 
 
 def build_edge_idx(num_nodes):
@@ -80,8 +92,34 @@ def create_epsilon_graph(data, eps, d = 2, eps_quantile = 0.5, **kwargs):
     data.edge_attr = torch.Tensor(edge_attr)
     return data
 
-def epsilon_graph_transform(**kwargs):
-    return lambda x: create_epsilon_graph(x, **kwargs)
+
+class epsilon_graph_transform(BaseTransform):
+    def __init__(self,eps,d=2,eps_quantile=0.5,**kwargs):
+        self.eps = eps
+        self.d = d
+        self.eps_quantile = eps_quantile
+    
+    def forward(self,data):
+        X = data.pos.numpy()
+        n = X.shape[0]
+        dists = compute_dist(X)
+        if self.eps == "auto":
+            triu_dists = np.triu(dists)
+            eps = np.quantile(triu_dists[np.nonzero(triu_dists)], self.eps_quantile)
+        else:
+            eps = self.eps
+        W = compute_kernel(dists, eps, self.d)
+
+        edge_index = build_edge_idx(n)
+        edge_attr = W[edge_index[0],edge_index[1]]
+        data.edge_index = edge_index
+        data.edge_attr = torch.Tensor(edge_attr)
+        #data = create_epsilon_graph(data,self.eps,self.d,self.eps_quantile)
+        return data
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}(eps={self.eps}, d={self.d}, eps_quantile={self.eps_quantile})'
+
 
 
 def laplacian_epsilon(data, eps, K, d = 2, eps_quantile=0.5):
@@ -108,25 +146,35 @@ def laplacian_epsilon(data, eps, K, d = 2, eps_quantile=0.5):
     return data
     #return S, U, eps
 
-def scattering_features_transform_(data,norm_list, J):
-    features = compute_scattering_features(data,norm_list,J)
-    data.scattering_features = torch.from_numpy(features)[None,...]
-    return data
+class scattering_features_transform(BaseTransform):
+    def __init__(self,norm_list,J, **kwargs):
+        self.norm_list = norm_list
+        self.J = J
+    
+    def forward(self,data):
+        features = compute_scattering_features(data,self.norm_list,self.J)
+        data.scattering_features = torch.from_numpy(features)[None,...]
+        return data
 
-def scattering_features_transform(norm_list, J, **kwargs):
-    return lambda data : scattering_features_transform_(data,norm_list,J)
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}(norm_list={self.norm_list}, J={self.J})'
 
 
-def lap_transform(data):
+
+class lap_transform(BaseTransform):
     """
     Computing the laplacian from a graph and storing the eigenvalues and eigenvectors
     """
-    L_sparse = torch_geometric.utils.get_laplacian(data.edge_index)
-    L = torch_geometric.utils.to_dense_adj(L_sparse[0], edge_attr=L_sparse[1])
-    eig, eigvec =  np.linalg.eigh(L)
-    data.node_attr_eig = torch.from_numpy(eig[0])
-    data.eigvec = torch.from_numpy(eigvec[0])
-    return data
+    def __init__(self):
+        return 
+    
+    def forward(self,data):
+        L_sparse = torch_geometric.utils.get_laplacian(data.edge_index)
+        L = torch_geometric.utils.to_dense_adj(L_sparse[0], edge_attr=L_sparse[1])
+        eig, eigvec =  np.linalg.eigh(L)
+        data.node_attr_eig = torch.from_numpy(eig[0])
+        data.eigvec = torch.from_numpy(eigvec[0])
+        return data
 
 
 def get_pretransforms(compute_laplacian, graph_type, compute_scattering_feats, pre_transforms_base = None, **kwargs):
@@ -145,7 +193,7 @@ def get_pretransforms(compute_laplacian, graph_type, compute_scattering_feats, p
     if compute_laplacian == "epsilon":
         pre_transforms = pre_transforms + [ laplacian_epsilon_transform(**kwargs)]
     elif compute_laplacian == "combinatorial":
-        pre_transforms = pre_transforms + [ lap_transform ]
+        pre_transforms = pre_transforms + [ lap_transform() ]
      
     if compute_scattering_feats:
         pre_transforms = pre_transforms + [ scattering_features_transform(**kwargs)]

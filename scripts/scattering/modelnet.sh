@@ -11,4 +11,4 @@ cd ~/project/pcnn
 module load miniconda
 conda activate pcnn
 
-python  cluster_pred.py -m launcher=mccleary experiment=scattering/modelnet 
+python train.py -m experiment=scattering/modelnet launcher=mccleary

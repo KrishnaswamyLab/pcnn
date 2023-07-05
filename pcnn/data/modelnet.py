@@ -14,10 +14,7 @@ import tqdm
 import torch_geometric
 from torch_geometric.io import read_off
 import torch_geometric.transforms as T
-from torch_geometric.transforms.knn_graph import KNNGraph
 from torch_geometric.datasets import ModelNet
-from torch_geometric.utils import to_networkx
-from torch_geometric.nn import knn_graph, radius_graph
 
 from torch.utils.data import Subset, DataLoader
 
@@ -68,7 +65,6 @@ class ModelNetExt(ModelNet):
             data_list = [d for d in data_list if self.pre_filter(d)]
         
         if self.pre_transform is not None:
-
             if self.njobs==1:
                 d_list = []
                 for d in tqdm.tqdm(data_list):
