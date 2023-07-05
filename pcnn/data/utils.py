@@ -138,21 +138,56 @@ def create_dense_graph(data, eps, d = 2, eps_quantile = 0.5, **kwargs):
     data.edge_attr = torch.Tensor(edge_attr)
     return data
 
-def create_epsilon_graph(data, eps, d = 2, eps_quantile = 0.5, **kwargs):
-    X = data.pos.numpy()
-    n = X.shape[0]
-    dists = compute_dist(X)
-    if eps == "auto":
-        triu_dists = np.triu(dists)
-        eps = np.quantile(triu_dists[np.nonzero(triu_dists)], eps_quantile)
-    W = compute_kernel(dists, eps, d)
-    breakpoint()
+class epsilon_graph_transform(BaseTransform):
+    def __init__(self,eps,d=2, eps_quantile = 0.5,fixed_pos = False, **kwargs):
+        self.eps = eps
+        self.d = d
+        self.eps_quantile = eps_quantile
+        self.fixed_pos = fixed_pos
 
-    edge_index = build_edge_idx(n)
-    edge_attr = W[edge_index[0],edge_index[1]]
-    data.edge_index = edge_index
-    data.edge_attr = torch.Tensor(edge_attr)
-    return data
+        self.edge_index = None
+        self.edge_attr = None
+    
+    def eta_kernel(self,x):
+            return np.exp(-x)
+    
+    def create_epsilon_graph(self,data):
+        X = data.pos.numpy()
+        n = X.shape[0]
+        dists = compute_dist(X)
+        if self.eps == "auto":
+            triu_dists = np.triu(dists)
+            eps = np.quantile(triu_dists[np.nonzero(triu_dists)], self.eps_quantile)
+        else:
+            eps = self.eps
+
+        W = self.eta_kernel(dists / eps)
+        W[dists > eps] = 0
+        
+        edge_index, edge_attr = torch_geometric.utils.dense_to_sparse(torch.Tensor(W))
+        data.edge_index = edge_index
+        data.edge_attr = edge_attr
+        return data
+    
+    def forward(self,data):
+        if self.fixed_pos:
+            if self.edge_index is None:
+                data = self.create_epsilon_graph(data)
+                self.edge_index = data.edge_index
+                self.edge_attr = data.edge_attr
+            else:
+                data.edge_index = self.edge_index
+                data.edge_attr = self.edge_attr
+        else:
+            data = self.create_epsilon_graph(data)
+        return data
+    
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}(eps={self.eps}, eps_quantile={self.eps_quantile})'
+    
+    def __call__(self, data ):
+        return self.forward(data)
+    
 
 
 class dense_graph_transform(BaseTransform):
@@ -296,7 +331,9 @@ def get_pretransforms(compute_laplacian, graph_type, compute_scattering_feats, p
     if graph_type == "knn":
         pre_transforms = pre_transforms + [ KNNGraph(kwargs["k"]) ]
     elif graph_type == "dense":
-        pre_transforms = pre_transforms + [ dense_graph_transform(fixed_pos = fixed_pos, **kwargs) ] 
+        pre_transforms = pre_transforms + [ dense_graph_transform(fixed_pos = fixed_pos, **kwargs) ]
+    elif graph_type == "epsilon":
+        pre_transforms = pre_transforms + [ epsilon_graph_transform(fixed_pos = fixed_pos, **kwargs) ]
     
     if compute_laplacian == "dense":
         pre_transforms = pre_transforms + [ laplacian_dense_transform(fixed_pos = fixed_pos, **kwargs)]
