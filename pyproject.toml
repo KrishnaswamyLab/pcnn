@@ -18,6 +18,7 @@ torchvision = "^0.15.2"
 omegaconf = "^2.3.0"
 pathos = "^0.3.0"
 pandas = "^2.0.3"
+ipykernel = "^6.24.0"
 
 
 [build-system]
