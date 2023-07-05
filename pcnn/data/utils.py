@@ -53,12 +53,15 @@ class laplacian_epsilon_transform(BaseTransform):
         self.K = K
         self.d = d
         self.eps_quantile = eps_quantile
+
     def forward(self,data):
         return laplacian_epsilon(data, self.eps, self.K, self.d, self.eps_quantile)
     
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}(eps={self.eps}, K={self.K},d={self.d}, eps_quantile={self.eps_quantile})'
 
+    def __call__(self, data ):
+        return self.forward(data)
 
 def build_edge_idx(num_nodes):
     # Initialize edge index matrix
@@ -119,7 +122,9 @@ class epsilon_graph_transform(BaseTransform):
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}(eps={self.eps}, d={self.d}, eps_quantile={self.eps_quantile})'
-
+    
+    def __call__(self, data ):
+        return self.forward(data)
 
 
 def laplacian_epsilon(data, eps, K, d = 2, eps_quantile=0.5):
@@ -158,6 +163,9 @@ class scattering_features_transform(BaseTransform):
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}(norm_list={self.norm_list}, J={self.J})'
+    
+    def __call__(self, data ):
+        return self.forward(data)
 
 
 
@@ -175,6 +183,9 @@ class lap_transform(BaseTransform):
         data.node_attr_eig = torch.from_numpy(eig[0])
         data.eigvec = torch.from_numpy(eigvec[0])
         return data
+
+    def __call__(self, data ):
+        return self.forward(data)
 
 
 def get_pretransforms(compute_laplacian, graph_type, compute_scattering_feats, pre_transforms_base = None, **kwargs):
