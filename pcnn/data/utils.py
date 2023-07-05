@@ -48,13 +48,57 @@ def compute_kernel(D, eps, d):
 
 
 class laplacian_epsilon_transform(BaseTransform):
-    def __init__(self,eps,K,d=2,eps_quantile = 0.5, **kwargs):
+    def __init__(self,eps,K,d=2,eps_quantile = 0.5, fixed_pos = False, **kwargs):
         self.eps = eps
         self.K = K
         self.d = d
         self.eps_quantile = eps_quantile
+
+        self.fixed_pos = fixed_pos
+
+        self.node_attr_eig = None
+        self.eigvec = None
+        self.eps = None
+
     def forward(self,data):
-        return laplacian_epsilon(data, self.eps, self.K, self.d, self.eps_quantile)
+        if self.fixed_pos:
+            if self.edge_index is None:
+                data = self.compute_eig(data)
+                self.node_attr_eig = data.node_attr_eig
+                self.eigvec = data.eigvec
+                self.eps = data.eps
+            else:
+                data.node_attr_eig = self.node_attr_eig
+                data.eigvec = self.eigvec
+                data.eps = self.eps
+        else:
+            data = self.compute_eig(data)
+        return data 
+
+    def compute_eig(self,data):
+        # X is n x d matrix of data points
+        X = data.pos.numpy()
+        n = X.shape[0]
+        dists = compute_dist(X)
+        if self.eps == "auto":
+            triu_dists = np.triu(dists)
+            eps = np.quantile(triu_dists[np.nonzero(triu_dists)], self.eps_quantile)
+        else:
+            eps = self.eps
+        W = compute_kernel(dists, eps, self.d)
+        D = np.diag(np.sum(W, axis=1, keepdims=False))
+        L = sparse.csr_matrix(D - W)
+        S, U = sparse.linalg.eigsh(L, k = self.K, which='SM')
+        S = np.reshape(S.real, (1, -1))/(eps * n)
+        S[0,0] = 0 # manually enforce this
+        # normalize eigenvectors in usual l2 norm
+        U = np.divide(U.real, np.linalg.norm(U.real, axis=0, keepdims=True))
+
+        data.node_attr_eig = torch.from_numpy(S[0])
+        data.eigvec = torch.from_numpy(U)
+        data.eps = eps
+
+        return data
     
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}(eps={self.eps}, K={self.K},d={self.d}, eps_quantile={self.eps_quantile})'
@@ -94,12 +138,28 @@ def create_epsilon_graph(data, eps, d = 2, eps_quantile = 0.5, **kwargs):
 
 
 class epsilon_graph_transform(BaseTransform):
-    def __init__(self,eps,d=2,eps_quantile=0.5,**kwargs):
+    def __init__(self,eps,d=2,eps_quantile=0.5, fixed_pos = False,**kwargs):
         self.eps = eps
         self.d = d
         self.eps_quantile = eps_quantile
-    
+        self.fixed_pos = fixed_pos
+        self.edge_index = None
+        self.edge_attr = None
+
     def forward(self,data):
+        if self.fixed_pos:
+            if self.edge_index is None:
+                data = self.compute_eig(data)
+                self.edge_index = data.edge_index
+                self.edge_attr = data.edge_attr
+            else:
+                data.edge_index = self.edge_index
+                data.edge_attr = self.edge_attr
+        else:
+            data = self.compute_eig(data)
+        return data
+    
+    def compute_eig(self,data):
         X = data.pos.numpy()
         n = X.shape[0]
         dists = compute_dist(X)
@@ -122,34 +182,13 @@ class epsilon_graph_transform(BaseTransform):
 
 
 
-def laplacian_epsilon(data, eps, K, d = 2, eps_quantile=0.5):
-    # X is n x d matrix of data points
-    X = data.pos.numpy()
-    n = X.shape[0]
-    dists = compute_dist(X)
-    if eps == "auto":
-        triu_dists = np.triu(dists)
-        eps = np.quantile(triu_dists[np.nonzero(triu_dists)], eps_quantile)
-    W = compute_kernel(dists, eps, d)
-    D = np.diag(np.sum(W, axis=1, keepdims=False))
-    L = sparse.csr_matrix(D - W)
-    S, U = sparse.linalg.eigsh(L, k = K, which='SM')
-    S = np.reshape(S.real, (1, -1))/(eps * n)
-    S[0,0] = 0 # manually enforce this
-    # normalize eigenvectors in usual l2 norm
-    U = np.divide(U.real, np.linalg.norm(U.real, axis=0, keepdims=True))
 
-    data.node_attr_eig = torch.from_numpy(S[0])
-    data.eigvec = torch.from_numpy(U)
-    data.eps = eps
-
-    return data
-    #return S, U, eps
 
 class scattering_features_transform(BaseTransform):
-    def __init__(self,norm_list,J, **kwargs):
+    def __init__(self,norm_list,J,**kwargs):
         self.norm_list = norm_list
         self.J = J
+        
     
     def forward(self,data):
         features = compute_scattering_features(data,self.norm_list,self.J)
@@ -165,19 +204,36 @@ class lap_transform(BaseTransform):
     """
     Computing the laplacian from a graph and storing the eigenvalues and eigenvectors
     """
-    def __init__(self):
-        return 
-    
-    def forward(self,data):
+    def __init__(self, fixed_pos):
+        self.fixed_pos = fixed_pos
+        
+        self.node_attr_eig = None
+        self.eigvec = None
+
+    def compute_eigs(self,data):
         L_sparse = torch_geometric.utils.get_laplacian(data.edge_index)
         L = torch_geometric.utils.to_dense_adj(L_sparse[0], edge_attr=L_sparse[1])
         eig, eigvec =  np.linalg.eigh(L)
         data.node_attr_eig = torch.from_numpy(eig[0])
         data.eigvec = torch.from_numpy(eigvec[0])
         return data
+    
+    def forward(self,data):
+
+        if self.fixed_pos:
+            if self.node_attr_eig is not None:
+                data.node_attr_eig = self.node_attr_eig
+                data.eigvec = self.eigvec
+            else:
+                data = self.compute_eigs(data)
+                self.node_attr_eig = data.node_attr_eig
+                self.eigvec = data.eigvec
+        else:
+            data = self.compute_eigs(data)
+        return data        
 
 
-def get_pretransforms(compute_laplacian, graph_type, compute_scattering_feats, pre_transforms_base = None, **kwargs):
+def get_pretransforms(compute_laplacian, graph_type, compute_scattering_feats, pre_transforms_base = None, fixed_pos = False, **kwargs):
 
     if pre_transforms_base is None:
         pre_transforms = []
@@ -188,12 +244,12 @@ def get_pretransforms(compute_laplacian, graph_type, compute_scattering_feats, p
     if graph_type == "knn":
         pre_transforms = pre_transforms + [ KNNGraph(kwargs["k"]) ]
     elif graph_type == "epsilon":
-        pre_transforms = pre_transforms + [ epsilon_graph_transform(**kwargs) ] 
+        pre_transforms = pre_transforms + [ epsilon_graph_transform(fixed_pos = fixed_pos, **kwargs) ] 
     
     if compute_laplacian == "epsilon":
-        pre_transforms = pre_transforms + [ laplacian_epsilon_transform(**kwargs)]
+        pre_transforms = pre_transforms + [ laplacian_epsilon_transform(fixed_pos = fixed_pos, **kwargs)]
     elif compute_laplacian == "combinatorial":
-        pre_transforms = pre_transforms + [ lap_transform() ]
+        pre_transforms = pre_transforms + [ lap_transform(fixed_pos = fixed_pos) ]
      
     if compute_scattering_feats:
         pre_transforms = pre_transforms + [ scattering_features_transform(**kwargs)]

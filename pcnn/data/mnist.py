@@ -15,6 +15,8 @@ from torch_geometric.data.in_memory_dataset import InMemoryDataset
 import shutil
 import tqdm
 
+from sklearn.model_selection import train_test_split
+
 import torch_geometric.transforms as T
 
 import pytorch_lightning as pl
@@ -353,6 +355,7 @@ class InMemoryExt(InMemoryDataset):
         self.normalize_scattering_features = normalize_scattering_features
         self.reprocess_if_different = reprocess_if_different
         super().__init__(root, transform, pre_transform, pre_filter)
+        self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
     def raw_file_names(self):
@@ -361,21 +364,13 @@ class InMemoryExt(InMemoryDataset):
     def processed_file_names(self):
         return ['data.pt']
     
-    @classmethod
-    def save(cls, data_list, path: str):
-        r"""Saves a list of data objects to the file path :obj:`path`."""
-        torch.save(data_list,path)
-        #data, slices = cls.collate(data_list)
-        #torch.save((data.to_dict(), slices), path)
-    
     def download(self):
         data_list = create_raw_data(self.raw_dir)
         full_path = os.path.join(self.raw_dir, 'data.pt')
-        self.save(data_list,full_path)
+        torch.save(data_list,full_path)
 
     def process(self):
         data_list = torch.load(os.path.join(self.raw_dir,self.raw_file_names[0]))
-        
         if self.pre_filter is not None:
             data_list = [d for d in data_list if self.pre_filter(d)]
         
@@ -469,7 +464,7 @@ class MNISTData(pl.LightningDataModule):
                 shutil.rmtree(os.path.join(DATA_DIR,dataname,"processed"))
         
         base_pre_transform = [T.NormalizeScale() ]
-        pre_transform_list = get_pretransforms(pre_transforms_base = base_pre_transform, **kwargs["graph_construct"])
+        pre_transform_list = get_pretransforms(pre_transforms_base = base_pre_transform, fixed_pos = True, **kwargs["graph_construct"])
         pre_transform = T.Compose(pre_transform_list)
 
         #transform = T.Compose([signal_transform]) # setting the signal as the position of the points
@@ -482,13 +477,12 @@ class MNISTData(pl.LightningDataModule):
             reprocess_if_different = reprocess_if_different
         )
 
-        
         train_idx, test_idx = train_test_split(np.arange(len(dataset)), test_size=0.2, random_state=random_state)
         train_idx, val_idx = train_test_split(train_idx, test_size=0.2, random_state=random_state)
 
-        self.train_dataset = Subset(train_dataset, train_idx)
-        self.val_dataset = Subset(train_dataset, val_idx)
-        self.test_dataset = Subset(test_dataset, test_idx)
+        self.train_dataset = Subset(dataset, train_idx)
+        self.val_dataset = Subset(dataset, val_idx)
+        self.test_dataset = Subset(dataset, test_idx)
 
         self.batch_size = batch_size
         self.num_workers = num_workers
