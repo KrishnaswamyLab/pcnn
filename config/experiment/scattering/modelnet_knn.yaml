@@ -3,7 +3,7 @@
 hydra:
   sweeper:
     params:
-      name: scattering_modelnet
+      name: scattering_modelnet_knn
       model: scattering
       data: modelnet
       graph_construct: knn_lap
