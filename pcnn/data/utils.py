@@ -274,7 +274,10 @@ class lap_transform(BaseTransform):
         L_edge, L_vals = torch_geometric.utils.get_laplacian(data.edge_index)
         L_sparse = torch_geometric.utils.to_scipy_sparse_matrix(L_edge, edge_attr=L_vals)
         n = data.pos.shape[0]
-        S, U = sparse.linalg.eigsh(L_sparse, k = self.K, which='SM')
+        try:
+            S, U = sparse.linalg.eigsh(L_sparse, k = self.K, which='SM')
+        except:
+            S, U = sparse.linalg.eigsh(L_sparse, k = self.K, which='SM')
         S = np.reshape(S.real, (1, -1)) /(self.eps * n)
         S[0,0] = 0 # manually enforce this
         # normalize eigenvectors in usual l2 norm

@@ -3,11 +3,11 @@
 hydra:
   sweeper:
     params:
-      name: mnn_modelnet_dense
+      name: mnn_modelnet_knn
       model: mnn
-      data: modelnet
       model.hidden_dim: 16, 32
-      graph_construct: dense_lap
+      data: modelnet
+      graph_construct: knn_lap
       data.random_state: 42, 43, 44, 45, 46
       model.lr: 0.001, 0.01
 
