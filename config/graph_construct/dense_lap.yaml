@@ -3,8 +3,8 @@
 graph_construct:
   k: null
   graph_type: null
-  compute_laplacian: epsilon
-  compute_scattering_feats: True
+  compute_laplacian: dense
+  compute_scattering_feats: False
   eps: 3
   K: 20
   d: 2

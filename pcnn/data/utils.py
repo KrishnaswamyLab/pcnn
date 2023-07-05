@@ -47,7 +47,7 @@ def compute_kernel(D, eps, d):
     return K
 
 
-class laplacian_epsilon_transform(BaseTransform):
+class laplacian_dense_transform(BaseTransform):
     def __init__(self,eps,K,d=2,eps_quantile = 0.5, fixed_pos = False, **kwargs):
         self.eps = eps
         self.K = K
@@ -58,7 +58,7 @@ class laplacian_epsilon_transform(BaseTransform):
 
         self.node_attr_eig = None
         self.eigvec = None
-        self.eps = None
+        self.eps_ = None
 
     def forward(self,data):
         if self.fixed_pos:
@@ -66,11 +66,11 @@ class laplacian_epsilon_transform(BaseTransform):
                 data = self.compute_eig(data)
                 self.node_attr_eig = data.node_attr_eig
                 self.eigvec = data.eigvec
-                self.eps = data.eps
+                self.eps_ = data.eps
             else:
                 data.node_attr_eig = self.node_attr_eig
                 data.eigvec = self.eigvec
-                data.eps = self.eps
+                data.eps = self.eps_
         else:
             data = self.compute_eig(data)
         return data 
@@ -123,7 +123,7 @@ def build_edge_idx(num_nodes):
     
     return E
 
-def create_epsilon_graph(data, eps, d = 2, eps_quantile = 0.5, **kwargs):
+def create_dense_graph(data, eps, d = 2, eps_quantile = 0.5, **kwargs):
     X = data.pos.numpy()
     n = X.shape[0]
     dists = compute_dist(X)
@@ -138,8 +138,24 @@ def create_epsilon_graph(data, eps, d = 2, eps_quantile = 0.5, **kwargs):
     data.edge_attr = torch.Tensor(edge_attr)
     return data
 
+def create_epsilon_graph(data, eps, d = 2, eps_quantile = 0.5, **kwargs):
+    X = data.pos.numpy()
+    n = X.shape[0]
+    dists = compute_dist(X)
+    if eps == "auto":
+        triu_dists = np.triu(dists)
+        eps = np.quantile(triu_dists[np.nonzero(triu_dists)], eps_quantile)
+    W = compute_kernel(dists, eps, d)
+    breakpoint()
 
-class epsilon_graph_transform(BaseTransform):
+    edge_index = build_edge_idx(n)
+    edge_attr = W[edge_index[0],edge_index[1]]
+    data.edge_index = edge_index
+    data.edge_attr = torch.Tensor(edge_attr)
+    return data
+
+
+class dense_graph_transform(BaseTransform):
     def __init__(self,eps,d=2,eps_quantile=0.5, fixed_pos = False,**kwargs):
         self.eps = eps
         self.d = d
@@ -211,19 +227,44 @@ class lap_transform(BaseTransform):
     """
     Computing the laplacian from a graph and storing the eigenvalues and eigenvectors
     """
-    def __init__(self, fixed_pos):
+    def __init__(self, fixed_pos, K, **kwargs):
         self.fixed_pos = fixed_pos
-        
+        self.K = K # number of eigenvalues to compute
         self.node_attr_eig = None
         self.eigvec = None
 
+        self.eps = 1
+
     def compute_eigs(self,data):
-        L_sparse = torch_geometric.utils.get_laplacian(data.edge_index)
-        L = torch_geometric.utils.to_dense_adj(L_sparse[0], edge_attr=L_sparse[1])
-        eig, eigvec =  np.linalg.eigh(L)
-        data.node_attr_eig = torch.from_numpy(eig[0])
-        data.eigvec = torch.from_numpy(eigvec[0])
+        L_edge, L_vals = torch_geometric.utils.get_laplacian(data.edge_index)
+        L_sparse = torch_geometric.utils.to_scipy_sparse_matrix(L_edge, edge_attr=L_vals)
+        n = data.pos.shape[0]
+        S, U = sparse.linalg.eigsh(L_sparse, k = self.K, which='SM')
+        S = np.reshape(S.real, (1, -1)) /(self.eps * n)
+        S[0,0] = 0 # manually enforce this
+        # normalize eigenvectors in usual l2 norm
+        U = np.divide(U.real, np.linalg.norm(U.real, axis=0, keepdims=True))
+
+        data.node_attr_eig = torch.from_numpy(S[0])
+        data.eigvec = torch.from_numpy(U)
+        data.eps = 1
+
         return data
+        #L = torch_geometric.utils.to_dense_adj(L_sparse[0], edge_attr=L_sparse[1])
+        #eig, eigvec =  np.linalg.eigh(L)
+        #data.node_attr_eig = torch.from_numpy(eig[0])
+        #data.eigvec = torch.from_numpy(eigvec[0])
+        #return data
+    
+        
+        #S = np.reshape(S.real, (1, -1))/(eps * n)
+        #S[0,0] = 0 # manually enforce this
+        # normalize eigenvectors in usual l2 norm
+        #U = np.divide(U.real, np.linalg.norm(U.real, axis=0, keepdims=True))
+
+        #data.node_attr_eig = torch.from_numpy(S[0])
+        #data.eigvec = torch.from_numpy(U)
+        #data.eps = eps
     
     def forward(self,data):
 
@@ -231,6 +272,7 @@ class lap_transform(BaseTransform):
             if self.node_attr_eig is not None:
                 data.node_attr_eig = self.node_attr_eig
                 data.eigvec = self.eigvec
+                data.eps = self.eps
             else:
                 data = self.compute_eigs(data)
                 self.node_attr_eig = data.node_attr_eig
@@ -253,18 +295,19 @@ def get_pretransforms(compute_laplacian, graph_type, compute_scattering_feats, p
     # scattering
     if graph_type == "knn":
         pre_transforms = pre_transforms + [ KNNGraph(kwargs["k"]) ]
-    elif graph_type == "epsilon":
-        pre_transforms = pre_transforms + [ epsilon_graph_transform(fixed_pos = fixed_pos, **kwargs) ] 
+    elif graph_type == "dense":
+        pre_transforms = pre_transforms + [ dense_graph_transform(fixed_pos = fixed_pos, **kwargs) ] 
     
-    if compute_laplacian == "epsilon":
-        pre_transforms = pre_transforms + [ laplacian_epsilon_transform(fixed_pos = fixed_pos, **kwargs)]
+    if compute_laplacian == "dense":
+        pre_transforms = pre_transforms + [ laplacian_dense_transform(fixed_pos = fixed_pos, **kwargs)]
     elif compute_laplacian == "combinatorial":
-        pre_transforms = pre_transforms + [ lap_transform(fixed_pos = fixed_pos) ]
+        pre_transforms = pre_transforms + [ lap_transform(fixed_pos = fixed_pos, **kwargs) ]
      
     if compute_scattering_feats:
         pre_transforms = pre_transforms + [ scattering_features_transform(**kwargs)]
 
     return pre_transforms
+
     #GCN
     #graph_type = "knn"
     #compute_laplacian = False

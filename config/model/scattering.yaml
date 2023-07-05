@@ -16,5 +16,6 @@ model:
     reshaping: identity
     num_filters: ${model.hidden_dim}
     num_combine: 1
-    num_cross_channels: 1 
+    num_cross_channels: 1
+  graph_construct: ${graph_construct}
 

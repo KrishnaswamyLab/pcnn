@@ -17,9 +17,5 @@ model:
     num_filters: ${model.hidden_dim}
     num_combine: 1
     num_cross_channels: 1
-  graph_construct:
-    k: 5
-    graph_type: knn
-    compute_laplacian: combinatorial
-    compute_scattering_feats: False
+  graph_construct: ${graph_construct}
 

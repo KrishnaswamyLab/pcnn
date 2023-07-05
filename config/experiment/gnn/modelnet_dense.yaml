@@ -3,11 +3,11 @@
 hydra:
   sweeper:
     params:
-      name: scattering_modelnet
-      model: scattering
+      name: gnn_modelnet_eps
+      model: gnn 
       data: modelnet
-      graph_construct: dense_lap
-      graph_construct.compute_scattering_feats: True
       data.random_state: 42, 43, 44, 45, 46
       model.lr: 0.001, 0.01
-
+      model.hidden_dim: 16, 32
+      graph_construct: dense_graph
+      trainer.max_epochs: 200

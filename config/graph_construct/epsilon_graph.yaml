@@ -1,9 +1,0 @@
-# @package _global_
-
-graph_construct:
-  k: 5
-  graph_type: epsilon
-  eps: 3
-  d: 2
-  compute_laplacian: False
-  compute_scattering_feats: False 

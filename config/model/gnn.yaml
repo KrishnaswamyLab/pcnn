@@ -17,4 +17,5 @@ model:
     num_filters: ${model.hidden_dim}
     num_combine: null
     num_cross_channels: 1
+  graph_construct: ${graph_construct}
 
