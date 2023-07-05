@@ -5,6 +5,7 @@ hydra:
     params:
       name: mnn_modelnet_dense
       model: mnn
+      model.lr: 0.001, 0.01
       data: modelnet
       model.hidden_dim: 16, 32
       graph_construct: dense_lap

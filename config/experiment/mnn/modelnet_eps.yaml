@@ -5,6 +5,7 @@ hydra:
     params:
       name: mnn_modelnet_eps
       model: mnn
+      model.lr: 0.001, 0.01
       model.hidden_dim: 16, 32
       data: modelnet
       graph_construct: epsilon_lap
