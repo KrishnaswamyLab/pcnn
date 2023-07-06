@@ -13,10 +13,10 @@ cd ~/project/pcnn
 module load miniconda
 conda activate pcnn_gpu
 
+python  train.py -m launcher=mccleary experiment=gnn/mnist_knn trainer.accelerator=gpu
+
+python train.py model=gnn data=mnist graph_construct=dense_graph trainer.accelerator=gpu trainer.max_epochs=2
 python  train.py -m launcher=mccleary experiment=gnn/mnist_dense trainer.accelerator=gpu
 
 python train.py model=gnn data=mnist graph_construct=epsilon_graph trainer.accelerator=gpu trainer.max_epochs=2
 python  train.py -m launcher=mccleary experiment=gnn/mnist_eps trainer.accelerator=gpu 
-
-python train.py model=gnn data=mnist graph_construct=knn trainer.accelerator=gpu trainer.max_epochs=2
-python  train.py -m launcher=mccleary experiment=gnn/mnist_knn trainer.accelerator=gpu
