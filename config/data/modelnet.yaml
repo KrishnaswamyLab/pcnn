@@ -13,3 +13,4 @@ data:
   graph_construct: ${graph_construct}
   re_precompute: False
   reprocess_if_different: True
+  train_size: None

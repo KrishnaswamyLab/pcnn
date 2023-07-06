@@ -135,7 +135,7 @@ class ModelNetExt(ModelNet):
 
 
 class ModelNetData(pl.LightningDataModule):
-    def __init__(self, n_samples = 100, batch_size = 32, num_workers = 4, pin_memory = True, random_state = 42, re_precompute = True, njobs = 1, reprocess_if_different = True, **kwargs):
+    def __init__(self, n_samples = 100, batch_size = 32, num_workers = 4, pin_memory = True, random_state = 42, re_precompute = True, njobs = 1, reprocess_if_different = True, train_size = None, **kwargs):
         """
         k: number of nearest neighbors to consider
         n_samples: number of samples for each point cloud
@@ -187,6 +187,9 @@ class ModelNetData(pl.LightningDataModule):
         )
         
         train_idx, val_idx = train_test_split(np.arange(len(train_dataset)), test_size=0.2, random_state=random_state)
+
+        if train_size is not None:
+            train_idx = train_idx[:train_size]
 
         self.train_dataset = Subset(train_dataset, train_idx)
         self.val_dataset = Subset(train_dataset, val_idx)
