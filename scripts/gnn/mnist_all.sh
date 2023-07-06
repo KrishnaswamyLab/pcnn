@@ -11,7 +11,7 @@
 
 cd ~/project/pcnn
 module load miniconda
-conda activate pcnn
+conda activate pcnn_gpu
 
 python  train.py -m launcher=mccleary experiment=gnn/mnist_dense trainer.accelerator=gpu
 
