@@ -5,8 +5,8 @@ dataset_name: mnist
 data:
   _target_: pcnn.data.mnist.MNISTData
   _partial_: True
-  batch_size: 32
-  num_workers: 0
+  batch_size: 256
+  num_workers: 4
   random_state: 42
   pin_memory: True
   graph_construct: ${graph_construct}

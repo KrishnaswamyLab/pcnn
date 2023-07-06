@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=mnn_modelnet_sh
+#SBATCH --job-name=gnn_mnist_dense
 #SBATCH --time=20:00:00
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=64G
@@ -11,4 +11,4 @@ cd ~/project/pcnn
 module load miniconda
 conda activate pcnn
 
-python  train.py -m launcher=mccleary experiment=mnn/modelnet_eps
+python  train.py -m launcher=mccleary experiment=gnn/mnist_dense 

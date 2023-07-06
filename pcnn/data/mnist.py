@@ -326,13 +326,13 @@ def create_raw_data(out_path):
     
     data_list = []
     for i in range(x_train.shape[0]):
-        data = Data(x = torch.tensor(x_train_s2[i], dtype=torch.float),
+        data = Data(x = torch.tensor(x_train_s2[i], dtype=torch.float)[:,None],
                      y = torch.tensor(y_train[i], dtype=torch.long),
                      pos = torch.tensor(X, dtype=torch.float))
         data_list.append(data)
     
     for i in range(x_test.shape[0]):
-        data = Data(x = torch.tensor(x_test_s2[i], dtype=torch.float),
+        data = Data(x = torch.tensor(x_test_s2[i], dtype=torch.float)[:,None],
                      y = torch.tensor(y_test[i], dtype=torch.long),
                      pos = torch.tensor(X, dtype=torch.float))
         data_list.append(data)
