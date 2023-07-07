@@ -107,13 +107,27 @@ class MNNDiffusionFilter(nn.Module):
         return filtered_tensor
     
 
+class ExpPolyFilter(nn.Module):
+    def __init__(self,max_poly_order = 5):
+        super().__init__()
+        self.max_poly_order = max_poly_order
+        self.alpha_k = nn.Parameter(torch.randn(max_poly_order), requires_grad = True)
+
+    def forward(self,x):
+        x_exp = torch.exp(-x)
+        poly_out = torch.sum(torch.stack([x_exp.pow(i)*self.alpha_k[i] for i in range(self.max_poly_order)]), dim = 0)
+        return poly_out
+
 class MNNFilter(nn.Module):
-    def __init__(self, input_dim, num_filters, **kwargs):
+    def __init__(self, input_dim, num_filters, poly_filter = False, **kwargs):
         super().__init__()
         self.input_dim = input_dim
         self.num_filters = num_filters
 
-        self.mod = nn.ModuleList([nn.ModuleList([ nn.Sequential(nn.Linear(1,10),nn.ReLU(),nn.Linear(10,1)) for _ in range(num_filters)]) for _ in range(input_dim)])
+        if poly_filter:
+            self.mod = nn.ModuleList([nn.ModuleList([ ExpPolyFilter(max_poly_order = kwargs["max_poly_order"]) for _ in range(num_filters)]) for _ in range(input_dim)])
+        else:
+            self.mod = nn.ModuleList([nn.ModuleList([ nn.Sequential(nn.Linear(1,10),nn.ReLU(),nn.Linear(10,1)) for _ in range(num_filters)]) for _ in range(input_dim)])
 
     def forward(self,x):
         #return torch.cat([x.x[...,None] for _ in range(self.num_filters)], dim = -1) # bypass test
