@@ -19,7 +19,10 @@ class PCNN(pl.LightningModule):
         if kwargs['layer']['filter_method'] == "extract_scattering":
             J = kwargs['graph_construct']['J']
             n_norms = len(kwargs['graph_construct']['norm_list'])
-            num_scattering_feats = ((2 * n_norms) + int(0.5*(J*(1+J)) * n_norms )) * input_dim
+            if kwargs["scattering_n_pca"] is not None:
+                num_scattering_feats = kwargs["scattering_n_pca"]
+            else: 
+                num_scattering_feats = ((2 * n_norms) + int(0.5*(J*(1+J)) * n_norms )) * input_dim
             self.bypass_pooling = True
         else:
             num_scattering_feats = 0

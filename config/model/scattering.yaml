@@ -8,6 +8,7 @@ model:
   hidden_dim: 4
   lr: 0.001
   compute_P: False
+  scattering_n_pca: 50
   layer:
     filter_method: extract_scattering
     combine_method: identity

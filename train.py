@@ -13,6 +13,7 @@ from pcnn import DATA_DIR
 import torch
 from omegaconf import OmegaConf
 import pandas as pd
+import time
 
 def get_logger(exp_name, wandb_user):
     logger = WandbLogger(
@@ -93,4 +94,7 @@ def main(config: DictConfig):
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     main()
+    end_time = time.time()
+    print(f"Total time taken: {end_time - start_time} seconds")

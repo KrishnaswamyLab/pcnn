@@ -12,4 +12,4 @@ module load miniconda
 conda activate pcnn
 
 python train.py model=mnn data=modelnet graph_construct=knn_lap trainer.max_epochs=2 data.train_size=1000
-python  train.py -m launcher=mccleary experiment=mnn/modelnet_knn
+python  train.py -m launcher=mccleary experiment=mnn/modelnet_knn data.train_size=1000

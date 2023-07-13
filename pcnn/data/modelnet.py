@@ -4,6 +4,8 @@ import os.path as osp
 import torch
 import torch.nn.functional as F
 
+from typing import Callable, Dict, List, Optional, Tuple
+
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -27,6 +29,8 @@ from pcnn.data.utils import laplacian_collate_fn, get_pretransforms
 from torch_geometric.data.dataset import _repr, files_exist
 from torch_geometric.data.makedirs import makedirs
 
+from sklearn.decomposition import PCA
+
 import sys
 
 
@@ -42,11 +46,19 @@ class ModelNetExt(ModelNet):
         njobs = 1,
         normalize_scattering_features = True,
         reprocess_if_different = True,
+        scattering_n_pca = None,
+        graph_type = "knn",
     ):
         self.njobs = njobs
         self.normalize_scattering_features = normalize_scattering_features
         self.reprocess_if_different = reprocess_if_different
+        self.scattering_n_pca = scattering_n_pca
+        self.graph_type = graph_type
         super().__init__(root, name, train, transform, pre_transform, pre_filter)
+
+    @property
+    def processed_file_names(self) -> List[str]:
+        return [f'{self.graph_type}_training.pt', f'{self.graph_type}_test.pt']
         
     def process_set(self,dataset):
         categories = glob.glob(osp.join(self.raw_dir, '*', ''))
@@ -84,20 +96,34 @@ class ModelNetExt(ModelNet):
                     for d in data_list:
                         scat_feats.append(d.scattering_features)
                     scat_feats = torch.cat(scat_feats)
-                    m_scat = scat_feats.mean(0)[None,...]
-                    std_scat = scat_feats.std(0)[None,...]
-                    max_scat = scat_feats[~torch.isinf(scat_feats)].max()
 
-                    for d in data_list:
-                        d.scattering_features = d.scattering_features - m_scat / std_scat
-                        d.scattering_features[torch.isinf(d.scattering_features)] = max_scat
-                        d_list.append(d) 
+                    if self.scattering_n_pca is not None:
+                        pca = PCA(n_components=self.scattering_n_pca)
+                        scat_feats = pca.fit_transform(scat_feats.reshape(scat_feats.shape[0],-1))
+                        scat_feats = torch.tensor(scat_feats).float()
+
+                        max_scat = scat_feats[~torch.isinf(scat_feats)].max() 
+                        
+                        for d in data_list:
+                            d.scattering_features = torch.Tensor(pca.transform(d.scattering_features.reshape(1,-1)))
+                            d.scattering_features[torch.isinf(d.scattering_features)] = max_scat
+                            d_list.append(d) 
+
+                    else:
+                        m_scat = scat_feats.mean(0)[None,...]
+                        std_scat = scat_feats.std(0)[None,...]
+                        max_scat = scat_feats[~torch.isinf(scat_feats)].max()
+
+                        for d in data_list:
+                            d.scattering_features = d.scattering_features - m_scat / std_scat
+                            d.scattering_features[torch.isinf(d.scattering_features)] = max_scat
+                            d_list.append(d) 
                     data_list = d_list
 
         return self.collate(data_list)
     
     def _process(self):
-        f = osp.join(self.processed_dir, 'pre_transform.pt')
+        f = osp.join(self.processed_dir, f'{self.graph_type}_pre_transform.pt')
         if osp.exists(f) and torch.load(f) != _repr(self.pre_transform):
             print(
                 f"The `pre_transform` argument differs from the one used in "
@@ -108,7 +134,7 @@ class ModelNetExt(ModelNet):
                 print("Reprocessing dataset...")
                 shutil.rmtree(self.processed_dir)
 
-        f = osp.join(self.processed_dir, 'pre_filter.pt')
+        f = osp.join(self.processed_dir, f'{self.graph_type}_pre_filter.pt')
         if osp.exists(f) and torch.load(f) != _repr(self.pre_filter):
             print(
                 "The `pre_filter` argument differs from the one used in "
@@ -125,9 +151,9 @@ class ModelNetExt(ModelNet):
         makedirs(self.processed_dir)
         self.process()
 
-        path = osp.join(self.processed_dir, 'pre_transform.pt')
+        path = osp.join(self.processed_dir, f'{self.graph_type}_pre_transform.pt')
         torch.save(_repr(self.pre_transform), path)
-        path = osp.join(self.processed_dir, 'pre_filter.pt')
+        path = osp.join(self.processed_dir, f'{self.graph_type}_pre_filter.pt')
         torch.save(_repr(self.pre_filter), path)
 
         if self.log and 'pytest' not in sys.modules:
@@ -160,6 +186,14 @@ class ModelNetData(pl.LightningDataModule):
         if re_precompute:
             if os.path.isdir(os.path.join(DATA_DIR,modelnet_dataset_alias,"processed")):
                 shutil.rmtree(os.path.join(DATA_DIR,modelnet_dataset_alias,"processed"))
+
+        if "scattering_n_pca" in kwargs['graph_construct']:
+            scattering_n_pca = kwargs['graph_construct']["scattering_n_pca"]
+        else:
+            scattering_n_pca = None
+
+        graph_type = kwargs["graph_construct"]["graph_type"]
+        breakpoint()
         
         base_pre_transform = [T.NormalizeScale(), T.SamplePoints(display_sample) ]
         pre_transform_list = get_pretransforms(pre_transforms_base = base_pre_transform, **kwargs["graph_construct"])
@@ -173,7 +207,9 @@ class ModelNetData(pl.LightningDataModule):
             transform=transform,
             pre_transform=pre_transform,
             njobs = njobs,
-            reprocess_if_different = reprocess_if_different
+            reprocess_if_different = reprocess_if_different,
+            scattering_n_pca=scattering_n_pca,
+            graph_type=graph_type
         )
 
         self.test_dataset = ModelNetExt(
@@ -183,7 +219,9 @@ class ModelNetData(pl.LightningDataModule):
             transform=transform,
             pre_transform=pre_transform,
             njobs = njobs,
-            reprocess_if_different = reprocess_if_different
+            reprocess_if_different = reprocess_if_different,
+            scattering_n_pca=scattering_n_pca,
+            graph_type=graph_type
         )
         
         train_idx, val_idx = train_test_split(np.arange(len(train_dataset)), test_size=0.2, random_state=random_state)
