@@ -8,6 +8,7 @@ model:
   hidden_dim: 16
   lr: 0.001
   compute_P: True
+  scattering_n_pca: null
   K: 5
   layer:
     filter_method: mnn_diffusion

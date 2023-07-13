@@ -14,3 +14,4 @@ data:
   re_precompute: False
   reprocess_if_different: True
   train_size: null
+  scattering_n_pca: ${model.scattering_n_pca}

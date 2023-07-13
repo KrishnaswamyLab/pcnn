@@ -8,6 +8,7 @@ model:
   hidden_dim: 32
   lr: 0.001
   compute_P: False
+  scattering_n_pca: null
   layer:
     filter_method: gcn
     combine_method: identity

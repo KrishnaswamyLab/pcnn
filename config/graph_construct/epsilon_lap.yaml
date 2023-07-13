@@ -5,6 +5,7 @@ graph_construct:
   graph_type: epsilon
   compute_laplacian: combinatorial
   compute_scattering_feats: False
+  normalize_scattering_features: True
   eps: 1
   K: 20
   d: 2

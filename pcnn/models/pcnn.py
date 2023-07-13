@@ -15,7 +15,7 @@ class PCNN(pl.LightningModule):
         self.num_layers = num_layers
 
         self.lr = lr
-
+        
         if kwargs['layer']['filter_method'] == "extract_scattering":
             J = kwargs['graph_construct']['J']
             n_norms = len(kwargs['graph_construct']['norm_list'])

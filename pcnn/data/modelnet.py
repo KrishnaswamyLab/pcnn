@@ -186,17 +186,16 @@ class ModelNetData(pl.LightningDataModule):
         if re_precompute:
             if os.path.isdir(os.path.join(DATA_DIR,modelnet_dataset_alias,"processed")):
                 shutil.rmtree(os.path.join(DATA_DIR,modelnet_dataset_alias,"processed"))
-
-        if "scattering_n_pca" in kwargs['graph_construct']:
-            scattering_n_pca = kwargs['graph_construct']["scattering_n_pca"]
+        
+        if "scattering_n_pca" in kwargs:
+            scattering_n_pca = kwargs["scattering_n_pca"]
         else:
             scattering_n_pca = None
 
         graph_type = kwargs["graph_construct"]["graph_type"]
-        breakpoint()
         
         base_pre_transform = [T.NormalizeScale(), T.SamplePoints(display_sample) ]
-        pre_transform_list = get_pretransforms(pre_transforms_base = base_pre_transform, **kwargs["graph_construct"])
+        pre_transform_list = get_pretransforms(pre_transforms_base = base_pre_transform, scattering_n_pca = scattering_n_pca, **kwargs["graph_construct"])
         pre_transform = T.Compose(pre_transform_list)
 
         transform = T.Compose([signal_transform]) # setting the signal as the position of the points
@@ -208,6 +207,7 @@ class ModelNetData(pl.LightningDataModule):
             pre_transform=pre_transform,
             njobs = njobs,
             reprocess_if_different = reprocess_if_different,
+            normalize_scattering_features= kwargs["graph_construct"]["normalize_scattering_features"],
             scattering_n_pca=scattering_n_pca,
             graph_type=graph_type
         )
@@ -220,6 +220,7 @@ class ModelNetData(pl.LightningDataModule):
             pre_transform=pre_transform,
             njobs = njobs,
             reprocess_if_different = reprocess_if_different,
+            normalize_scattering_features= kwargs["graph_construct"]["normalize_scattering_features"],
             scattering_n_pca=scattering_n_pca,
             graph_type=graph_type
         )

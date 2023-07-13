@@ -36,7 +36,7 @@ class BaseLayer(nn.Module):
             self.output_dim = num_scattering_feats
 
     def forward(self, x):
-
+        
         x_ = self.filtering_layer(x)
         x_ = self.combine_layer(x_)
         x_ = self.activation(x_)

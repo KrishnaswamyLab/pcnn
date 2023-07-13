@@ -2,9 +2,10 @@
 
 graph_construct:
   k: null
-  graph_type: null
-  compute_laplacian: dense
+  graph_type: dense
+  compute_laplacian: combinatorial
   compute_scattering_feats: False
+  normalize_scattering_features: True
   eps: 3
   K: 20
   d: 2
