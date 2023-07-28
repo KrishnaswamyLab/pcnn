@@ -4,9 +4,10 @@ import torch_geometric
 import pytorch_lightning as pl
 from pcnn.models.layers import BaseLayer
 from pcnn.utils import compute_sparse_diffusion_operator
+from pcnn.models.legs import scatter_moments
 
 class PCNN(pl.LightningModule):
-    def __init__(self,num_layers, input_dim, hidden_dim, num_classes, lr, compute_P, K = None, **kwargs):
+    def __init__(self,num_layers, input_dim, hidden_dim, num_classes, lr, compute_P, K = None, pooling = None, **kwargs):
         
         super().__init__()
 
@@ -31,13 +32,22 @@ class PCNN(pl.LightningModule):
         self.layers = nn.ModuleList([BaseLayer(output_dim = hidden_dim, input_dim = input_dim, K = K, num_scattering_feats = num_scattering_feats, **kwargs["layer"])])
         if num_layers > 1:
             for _ in range(num_layers-1):
-                self.layers = self.layers.append(BaseLayer(output_dim = hidden_dim, input_dim = hidden_dim, K= K, num_scattering_feats = num_scattering_feats,  **kwargs["layer"]))
+                if hidden_dim is None:
+                    previous_output_dim = self.layers[-1].output_dim
+                else:
+                    previous_output_dim = hidden_dim
+                self.layers = self.layers.append(BaseLayer(output_dim = hidden_dim, input_dim = previous_output_dim, K= K, num_scattering_feats = num_scattering_feats,  **kwargs["layer"]))
 
         self.model = nn.Sequential(*self.layers)
-
-        self.pooling = torch_geometric.nn.global_mean_pool
-
+        
         output_dim = self.layers[-1].output_dim
+
+        if pooling is None: #by default, pooling is global mean pooling
+            self.pooling = torch_geometric.nn.global_mean_pool
+        elif pooling.name == "moments":
+            self.pooling = lambda x,y : scatter_moments(x,y, pooling.moments_order)
+            output_dim = output_dim * pooling.moments_order
+
 
         self.classifier = nn.Sequential(nn.Linear( output_dim, int(output_dim/2)), nn.ReLU(), nn.Linear(int(output_dim/2),num_classes))
 

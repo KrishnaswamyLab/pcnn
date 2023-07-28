@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch_geometric
 import pytorch_lightning as pl
+from pcnn.models.legs import LegsFilter
 
     
 class BaseLayer(nn.Module):
@@ -57,6 +58,10 @@ class BaseLayer(nn.Module):
             return ScatteringFilter(input_dim = self.input_dim, num_filters = self.num_filters, **kwargs)
         elif filter_method == "extract_scattering": #extract the precomputed scattering features
             return lambda x: x.scattering_features.reshape(x.scattering_features.shape[0],-1)
+        elif filter_method == "legs":
+            filter_layer =  LegsFilter(in_channels = self.input_dim)
+            self.output_dim = filter_layer.output_dim
+            return filter_layer
     
     def _get_combine_layer(self,combine_method):
         if combine_method == "identity":
