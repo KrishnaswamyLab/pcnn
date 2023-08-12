@@ -59,7 +59,7 @@ class BaseLayer(nn.Module):
         elif filter_method == "extract_scattering": #extract the precomputed scattering features
             return lambda x: x.scattering_features.reshape(x.scattering_features.shape[0],-1)
         elif filter_method == "legs":
-            filter_layer =  LegsFilter(in_channels = self.input_dim)
+            filter_layer =  LegsFilter(in_channels = self.input_dim, **kwargs)
             self.output_dim = filter_layer.output_dim
             return filter_layer
     

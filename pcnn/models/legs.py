@@ -114,12 +114,18 @@ class LazyLayer(torch.nn.Module):
 
     def __init__(self, n):
         super().__init__()
-        self.weights = torch.nn.Parameter(torch.Tensor(2, n))
+        w_dims = (2,) + n
+        self.weights = torch.nn.Parameter(torch.Tensor(*w_dims))
 
     def forward(self, x, propogated):
         inp = torch.stack((x, propogated), dim=1)
         s_weights = torch.nn.functional.softmax(self.weights, dim=0)
-        return torch.sum(inp * s_weights, dim=-2)
+
+        #if (len(inp.shape)-len(s_weights.shape)==2 ) and (inp.shape[-1]==1):
+        #    return torch.sum(inp * s_weights[...,None], dim=1)
+        #else:
+        res = torch.sum(inp * s_weights, dim=1) 
+        return res
 
     def reset_parameters(self):
         torch.nn.init.ones_(self.weights)
@@ -175,6 +181,7 @@ class Diffuse(MessagePassing):
         propogated = self.propagate(
             edge_index, edge_weight=edge_weight, size=None, x=x,
         )
+
         if not self.trainable_laziness:
             return 0.5 * (x + propogated)
 
@@ -213,14 +220,14 @@ def feng_filters():
 
 class LegsFilter(torch.nn.Module):
 
-    def __init__(self, in_channels, trainable_laziness=False):
+    def __init__(self, in_channels, trainable_laziness, **kwargs ):
 
         super().__init__()
         self.in_channels = in_channels
         self.trainable_laziness = trainable_laziness
-        self.diffusion_layer1 = Diffuse(in_channels, in_channels, trainable_laziness)
+        self.diffusion_layer1 = Diffuse((in_channels,1), (in_channels,1), trainable_laziness)
         self.diffusion_layer2 = Diffuse(
-            4 * in_channels, 4 * in_channels, trainable_laziness
+            (in_channels,4), (in_channels,4), trainable_laziness
         )
         self.wavelet_constructor = torch.nn.Parameter(torch.tensor([
             [0, -1.0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -241,7 +248,6 @@ class LegsFilter(torch.nn.Module):
         
         # Combine the diffusion levels into a single tensor.
         diffusion_levels = torch.stack(avgs)
-        
         # Reshape the 3d tensor into a 2d tensor and multiply with the wavelet_constructor matrix
         # This simulates the below subtraction:
         # filter1 = avgs[1] - avgs[2]
@@ -270,7 +276,7 @@ class LegsFilter(torch.nn.Module):
         x = torch.cat([s0, s1], dim=2)
         x = torch.transpose(x, 1, 2)
         x = torch.cat([x, s2], dim=1)
-
+        breakpoint()
         #data.x = x.reshape(x.shape[0],-1)
         return x.reshape(x.shape[0],-1)
         
