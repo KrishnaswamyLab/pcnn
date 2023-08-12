@@ -85,7 +85,6 @@ class PCNN(pl.LightningModule):
 
         loss = self.loss_fun(y_hat,y)
         self.log('train_loss', loss)
-
         return loss
     
     def validation_step(self, batch, batch_idx):
