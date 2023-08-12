@@ -1,24 +1,26 @@
 # @package _global_
 
-model_name: "mnn"
+model_name: "legs"
 
 model:
   _target_: pcnn.models.pcnn.PCNN
-  num_layers: 2
-  hidden_dim: 8
+  num_layers: 1
+  hidden_dim: null
   lr: 0.001
   compute_P: False
   scattering_n_pca: null
   layer:
-    filter_method: mnn
-    combine_method: sum
-    activation: relu
+    filter_method: legs
+    combine_method: identity
+    activation: identity
     cross_channel_conv: identity
     reshaping: identity
     num_filters: ${model.hidden_dim}
-    num_combine: 1
+    num_combine: null
     num_cross_channels: 1
-    poly_filter: True
-    max_poly_order: 5
+    trainable_laziness: True
+  pooling:
+    name: moments
+    moments_order: 4
   graph_construct: ${graph_construct}
 
