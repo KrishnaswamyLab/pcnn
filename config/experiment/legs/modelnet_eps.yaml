@@ -1,0 +1,13 @@
+# @package _global_
+
+hydra:
+  sweeper:
+    params:
+      name: legs_modelnet_eps
+      model: legs
+      data: modelnet
+      graph_construct: epsilon_graph
+      graph_construct.compute_scattering_feats: False
+      data.random_state: 42, 43, 44, 45, 46
+      model.lr: 0.001, 0.01
+
