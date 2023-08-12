@@ -25,9 +25,10 @@ def laplacian_collate_fn(batch, follow_batch = None, exclude_keys = None):
         v = torch.FloatTensor(values)
         shape = L_coo.shape
 
-        L_tensor = torch.sparse.FloatTensor(i, v, torch.Size(shape)) 
-
-        b.L = L_tensor
+        #L_tensor = torch.sparse.FloatTensor(i, v, torch.Size(shape)) 
+        b.L_i = i
+        b.L_v = v
+        b.L_shape = shape
         del b.eigvec 
     
     return b

@@ -9,8 +9,8 @@ data:
   batch_size: 32
   num_workers: 0
   random_state: 42
-  pin_memory: True
+  pin_memory: False
   graph_construct: ${graph_construct}
   re_precompute: False
   reprocess_if_different: True
-  train_size: None
+  train_size: null

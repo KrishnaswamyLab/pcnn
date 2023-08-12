@@ -107,21 +107,36 @@ class MNNDiffusionFilter(nn.Module):
         return filtered_tensor
     
 
+class ExpPolyFilter(nn.Module):
+    def __init__(self,max_poly_order = 5):
+        super().__init__()
+        self.max_poly_order = max_poly_order
+        self.alpha_k = nn.Parameter(torch.randn(max_poly_order), requires_grad = True)
+
+    def forward(self,x):
+        x_exp = torch.exp(-x)
+        poly_out = torch.sum(torch.stack([x_exp.pow(i)*self.alpha_k[i] for i in range(self.max_poly_order)]), dim = 0)
+        return poly_out
+
 class MNNFilter(nn.Module):
-    def __init__(self, input_dim, num_filters, **kwargs):
+    def __init__(self, input_dim, num_filters, poly_filter = False, **kwargs):
         super().__init__()
         self.input_dim = input_dim
         self.num_filters = num_filters
 
-        self.mod = nn.ModuleList([nn.ModuleList([ nn.Sequential(nn.Linear(1,10),nn.ReLU(),nn.Linear(10,1)) for _ in range(num_filters)]) for _ in range(input_dim)])
+        if poly_filter:
+            self.mod = nn.ModuleList([nn.ModuleList([ ExpPolyFilter(max_poly_order = kwargs["max_poly_order"]) for _ in range(num_filters)]) for _ in range(input_dim)])
+        else:
+            self.mod = nn.ModuleList([nn.ModuleList([ nn.Sequential(nn.Linear(1,10),nn.ReLU(),nn.Linear(10,1)) for _ in range(num_filters)]) for _ in range(input_dim)])
 
     def forward(self,x):
         #return torch.cat([x.x[...,None] for _ in range(self.num_filters)], dim = -1) # bypass test
         filtered_outputs = []
+        L = torch.sparse.FloatTensor(x.L_i, x.L_v, torch.Size(x.L_shape))
         for k in range(self.num_filters):
-            coeffs = x.x.T @ x.L
+            coeffs = x.x.T @ L
             w = torch.stack([self.mod[i][k](x.node_attr_eig[:,None]) for i in range(self.input_dim)])[...,0]
-            filtered_output = x.L @ (coeffs * w).T
+            filtered_output = L @ (coeffs * w).T
             filtered_outputs.append(filtered_output)                
         filtered_tensor = torch.stack(filtered_outputs, -1) # Size = [N x input_dim x num_filters]
         return filtered_tensor
@@ -139,11 +154,12 @@ class ScatteringFilter(nn.Module):
         self.exponents = 2**torch.arange(num_filters+1)
     
     def forward(self,x):
-        coeffs = x.x.T @ x.L # input_dim x N
+        L = torch.sparse.FloatTensor(x.L_i, x.L_v, torch.Size(x.L_shape))
+        coeffs = x.x.T @ L # input_dim x N
         w = self.g(x.node_attr_eig)[:,None].pow(self.exponents[None,:]) # N x num_filters
         w_wav = w[:,:-1] - w[:,1:] # N x num_filters-1
         g_eig = (coeffs[...,None] * w_wav[None,...]).permute(1,0,2) # N x input_dim x num_filters-1
-        filtered_output = x.L @ (g_eig.reshape(-1,self.input_dim*(self.num_filters)))
+        filtered_output = L @ (g_eig.reshape(-1,self.input_dim*(self.num_filters)))
         filtered_output = filtered_output.reshape(-1,self.input_dim,self.num_filters) # N x input_dim x num_filters -1 
         return filtered_output
         
