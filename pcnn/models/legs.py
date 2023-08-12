@@ -276,7 +276,6 @@ class LegsFilter(torch.nn.Module):
         x = torch.cat([s0, s1], dim=2)
         x = torch.transpose(x, 1, 2)
         x = torch.cat([x, s2], dim=1)
-        breakpoint()
         #data.x = x.reshape(x.shape[0],-1)
         return x.reshape(x.shape[0],-1)
         
