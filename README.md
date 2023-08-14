@@ -22,3 +22,11 @@ Then,
 `poetry install` 
 
 It should now be installed.
+
+
+## Example
+
+We use hydra for the configuration of the runs. To run legs on the Modelnet dataset with a dense graph construction, you can use
+
+`poetry run python train.py model=legs data=modelnet graph_construct=dense_graph`
+

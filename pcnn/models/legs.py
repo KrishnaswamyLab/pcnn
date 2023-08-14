@@ -2,6 +2,7 @@ import numpy as np
 
 import torch
 from torch.nn import Linear
+import torch.nn as nn
 from torch_scatter import scatter_mean
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import degree
@@ -11,7 +12,26 @@ from torch_scatter import scatter_add
 ## Authors: Alex Tong + Edward De Brouwer
 ## Reference: Data-Driven Learning of Geometric Scattering Networks, IEEE Machine Learning for Signal Processing Workshop 2021
 
-def scatter_moments(graph, batch_indices, moments_returned=4):
+
+class ScatterAttention(nn.Module):
+    def __init__(self,in_channels):
+        super().__init__()
+        self.f_gate = nn.Sequential(nn.Linear(in_channels,in_channels),nn.ReLU(),nn.Linear(in_channels,1))
+        self.f_feat = nn.Sequential(nn.Linear(in_channels,in_channels),nn.ReLU(),nn.Linear(in_channels,in_channels))
+    
+    def forward(self,batch):
+        outs = []
+        graph_list = batch.to_data_list()
+        for graph in graph_list:
+            gate = self.f_gate(graph.x)
+            feat = self.f_feat(graph.x)
+            probs = torch.softmax(gate,0)
+            outs.append(torch.sum(probs*feat,0))
+        return torch.stack(outs)
+
+
+
+def scatter_moments(graph, edge_index, batch, moments_returned=4):
     
     """ Compute specified statistical coefficients for each feature of each graph passed. 
         The graphs expected are disjoint subgraphs within a single graph, whose feature tensor is passed as argument "graph."
@@ -20,12 +40,12 @@ def scatter_moments(graph, batch_indices, moments_returned=4):
         If 1, only the mean is returned. If 2, the mean and variance. If 3, the mean, variance, and skew. If 4, the mean, variance, skew, and kurtosis.
         The output is a dictionary. You can obtain the mean by calling output["mean"] or output["skew"], etc.
     """
-
+    batch_indices = batch
     # Step 1: Aggregate the features of each mini-batch graph into its own tensor
     graph_features = [torch.zeros(0).to(graph) for i in range(torch.max(batch_indices) + 1)]
 
+    breakpoint()
     for i, node_features in enumerate(graph):
-
         # Sort the graph features by graph, according to batch_indices. For each graph, create a tensor whose first row is the first element of each feature, etc.
         # print("node features are", node_features)
         
