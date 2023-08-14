@@ -11,4 +11,4 @@ graph_construct:
   d: 2
   eps_quantile: 0.5
   norm_list: [1,2,3,4]
-  J: 8
+  J: 4 
