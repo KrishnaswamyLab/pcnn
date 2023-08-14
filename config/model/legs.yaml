@@ -18,7 +18,8 @@ model:
     num_filters: ${model.hidden_dim}
     num_combine: null
     num_cross_channels: 1
-    trainable_laziness: False 
+    trainable_laziness: False
+    trainable_scales: True 
   pooling:
     name: moments
     moments_order: 4

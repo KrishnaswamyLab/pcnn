@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=scattering_modelnet
+#SBATCH --job-name=legs_modelnet
 #SBATCH --time=20:00:00
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=64G
@@ -11,4 +11,4 @@ cd ~/project/pcnn
 module load miniconda
 conda activate pcnn
 
-python train.py -m experiment=legs/modelnet launcher=mccleary
+python train.py -m experiment=legs/modelnet launcher=mccleary 
