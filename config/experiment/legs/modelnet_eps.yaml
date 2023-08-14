@@ -10,5 +10,6 @@ hydra:
       graph_construct.compute_scattering_feats: False
       data.random_state: 42, 43, 44, 45, 46
       model.lr: 0.001, 0.01
-      model.layer.trainable_scales: False
+      model.layer.trainable_scales: True
+      model.pooling.name: attention
 

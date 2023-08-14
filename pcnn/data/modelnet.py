@@ -193,6 +193,8 @@ class ModelNetData(pl.LightningDataModule):
             scattering_n_pca = None
 
         graph_type = kwargs["graph_construct"]["graph_type"]
+
+        self.collate_fn = laplacian_collate_fn
         
         base_pre_transform = [T.NormalizeScale(), T.SamplePoints(display_sample) ]
         pre_transform_list = get_pretransforms(pre_transforms_base = base_pre_transform, scattering_n_pca = scattering_n_pca, **kwargs["graph_construct"])
@@ -254,7 +256,7 @@ class ModelNetData(pl.LightningDataModule):
                           batch_size=self.batch_size, 
                           num_workers=self.num_workers, 
                           pin_memory=self.pin_memory,
-                          collate_fn = laplacian_collate_fn)
+                          collate_fn = self.collate_fn)
     
     def val_dataloader(self):
         return DataLoader(self.val_dataset, 
@@ -262,7 +264,7 @@ class ModelNetData(pl.LightningDataModule):
                           num_workers=self.num_workers, 
                           pin_memory=self.pin_memory,
                           shuffle = False,
-                          collate_fn = laplacian_collate_fn)
+                          collate_fn = self.collate_fn)
     
     def test_dataloader(self):
         return DataLoader(self.test_dataset, 
@@ -270,4 +272,4 @@ class ModelNetData(pl.LightningDataModule):
                           num_workers=self.num_workers, 
                           pin_memory=self.pin_memory,
                           shuffle = False,
-                          collate_fn = laplacian_collate_fn)
+                          collate_fn = self.collate_fn)

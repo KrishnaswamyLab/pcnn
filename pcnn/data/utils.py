@@ -332,6 +332,8 @@ def get_pretransforms(compute_laplacian, graph_type, compute_scattering_feats, p
         pre_transforms = pre_transforms + [ dense_graph_transform(fixed_pos = fixed_pos, **kwargs) ]
     elif graph_type == "epsilon":
         pre_transforms = pre_transforms + [ epsilon_graph_transform(fixed_pos = fixed_pos, **kwargs) ]
+    elif graph_type == "raw":
+        pre_transforms = pre_transforms
     
     if compute_laplacian == "dense":
         pre_transforms = pre_transforms + [ laplacian_dense_transform(fixed_pos = fixed_pos, **kwargs)]
