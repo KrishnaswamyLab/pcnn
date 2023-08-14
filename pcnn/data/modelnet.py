@@ -132,7 +132,10 @@ class ModelNetExt(ModelNet):
                 f"delete '{self.processed_dir}' first")
             if self.reprocess_if_different:
                 print("Reprocessing dataset...")
-                shutil.rmtree(self.processed_dir)
+                files = os.listdir(self.processed_dir)
+                files_to_delete = [f_ for f_ in files if self.graph_type in f]
+                for f_ in files_to_delete:
+                    os.remove(f_)
 
         f = osp.join(self.processed_dir, f'{self.graph_type}_pre_filter.pt')
         if osp.exists(f) and torch.load(f) != _repr(self.pre_filter):

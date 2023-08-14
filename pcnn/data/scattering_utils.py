@@ -43,10 +43,10 @@ def first_order_feature(psi, Wf, Aj, N, norm_list):
     if norm_list == "none":
         F1 = [(1/N) * np.matmul(Aj, np.abs(ele)) for ele in Wf]
     else:
-        this_F1 = np.hstack([(1/N) * np.abs(ele) for ele in Wf])
-        F1 = np.sum(np.power(this_F1, norm_list[0]),axis=0).reshape(-1, 1)
+        this_F1 = np.stack([(1/N) * np.abs(ele) for ele in Wf])
+        F1 = np.sum(np.power(this_F1, norm_list[0]),axis=1).reshape(-1, 1)
         for i in range(1, len(norm_list)):
-            F1 = np.vstack((F1, np.sum(np.power(this_F1, norm_list[i]),axis=0).reshape(-1, 1)))
+            F1 = np.concatenate((F1, np.sum(np.power(this_F1, norm_list[i]),axis=1).reshape(-1, 1)),1)
     return np.reshape(F1, (-1, 1))
 
 def selected_second_order_feature(psi,Wf,Aj, N, norm_list):

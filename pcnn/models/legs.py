@@ -31,7 +31,7 @@ class ScatterAttention(nn.Module):
 
 
 
-def scatter_moments(graph, edge_index, batch, moments_returned=4):
+def scatter_moments(graph, batch, moments_returned=4):
     
     """ Compute specified statistical coefficients for each feature of each graph passed. 
         The graphs expected are disjoint subgraphs within a single graph, whose feature tensor is passed as argument "graph."
@@ -44,7 +44,6 @@ def scatter_moments(graph, edge_index, batch, moments_returned=4):
     # Step 1: Aggregate the features of each mini-batch graph into its own tensor
     graph_features = [torch.zeros(0).to(graph) for i in range(torch.max(batch_indices) + 1)]
 
-    breakpoint()
     for i, node_features in enumerate(graph):
         # Sort the graph features by graph, according to batch_indices. For each graph, create a tensor whose first row is the first element of each feature, etc.
         # print("node features are", node_features)
