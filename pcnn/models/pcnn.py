@@ -4,7 +4,7 @@ import torch_geometric
 import pytorch_lightning as pl
 from pcnn.models.layers import BaseLayer
 from pcnn.utils import compute_sparse_diffusion_operator
-from pcnn.models.legs import scatter_moments
+from pcnn.models.legs import scatter_moments, ScatterAttention
 
 class PCNN(pl.LightningModule):
     def __init__(self,num_layers, input_dim, hidden_dim, num_classes, lr, compute_P, K = None, pooling = None, **kwargs):
@@ -45,8 +45,10 @@ class PCNN(pl.LightningModule):
         if pooling is None: #by default, pooling is global mean pooling
             self.pooling = torch_geometric.nn.global_mean_pool
         elif pooling.name == "moments":
-            self.pooling = lambda x,y : scatter_moments(x,y, pooling.moments_order)
+            self.pooling = lambda batch : scatter_moments( batch.x, batch.batch, pooling.moments_order)
             output_dim = output_dim * pooling.moments_order
+        elif pooling.name == "attention":
+            self.pooling = ScatterAttention(in_channels= output_dim)
 
 
         self.classifier = nn.Sequential(nn.Linear( output_dim, int(output_dim/2)), nn.ReLU(), nn.Linear(int(output_dim/2),num_classes))
@@ -77,7 +79,7 @@ class PCNN(pl.LightningModule):
         y = batch.y
         graph_out = self(batch)
         if not self.bypass_pooling:
-            pooled = self.pooling(graph_out.x, graph_out.batch)
+            pooled = self.pooling(graph_out)
         else:
             pooled = graph_out.x.float()
 
@@ -92,7 +94,7 @@ class PCNN(pl.LightningModule):
         graph_out = self(batch)
         
         if not self.bypass_pooling:
-            pooled = self.pooling(graph_out.x, graph_out.batch)
+            pooled = self.pooling(graph_out)
         else:
             pooled = graph_out.x.float()
         y_hat = self.classifier(pooled)
@@ -115,7 +117,7 @@ class PCNN(pl.LightningModule):
         y = batch.y
         graph_out = self(batch)
         if not self.bypass_pooling:
-            pooled = self.pooling(graph_out.x, graph_out.batch)
+            pooled = self.pooling(graph_out)
         else:
             pooled = graph_out.x.float()
         y_hat = self.classifier(pooled)
