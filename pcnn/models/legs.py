@@ -220,7 +220,7 @@ def feng_filters():
 
 class LegsFilter(torch.nn.Module):
 
-    def __init__(self, in_channels, trainable_laziness, **kwargs ):
+    def __init__(self, in_channels, trainable_laziness, trainable_scales, **kwargs ):
 
         super().__init__()
         self.in_channels = in_channels
@@ -229,12 +229,21 @@ class LegsFilter(torch.nn.Module):
         self.diffusion_layer2 = Diffuse(
             (in_channels,4), (in_channels,4), trainable_laziness
         )
-        self.wavelet_constructor = torch.nn.Parameter(torch.tensor([
-            [0, -1.0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, -1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 1]
-        ], requires_grad=True))
+        
+        if trainable_scales:
+            self.wavelet_constructor = torch.nn.Parameter(torch.tensor([
+                [0, -1.0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, -1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 1]
+            ], requires_grad=True))
+        else:
+            self.wavelet_constructor = torch.tensor([
+                [0, -1.0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, -1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 1]
+            ], requires_grad=False) 
 
     def forward(self, data):
 
