@@ -35,6 +35,7 @@ trainer:
   early_stopping: 20
   accelerator: cpu
   max_epochs: 100
+  wandb: True
 
 # default to old behavior, change working directory to experimental directory
 hydra:
