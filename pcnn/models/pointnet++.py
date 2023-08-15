@@ -90,6 +90,14 @@ class Pointnet_plus(pl.LightningModule):
         logits = self(val_batch)
         loss = F.nll_loss(logits, y)
         self.log("val_loss", loss)
+    
+    def test_step(self, val_batch, batch_idx):
+        #breakpoint()
+        y = val_batch.y
+        logits = self(val_batch)
+        loss = F.nll_loss(logits, y)
+        self.log("test_loss", loss)
+        return loss
 
     
 
