@@ -10,4 +10,5 @@ hydra:
       model.lr: 0.001, 0.01
       #model.hidden_dim: 16, 32
       graph_construct: dense_graph
-      trainer.max_epochs: 200
+      trainer.max_epochs: 20
+      trainer.accelerator: cpu
