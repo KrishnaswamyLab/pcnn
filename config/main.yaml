@@ -31,10 +31,11 @@ n_seeds: 10
 name: "default"
 
 trainer:
-  wandb_user: "edebrouwer"
+  wandb_user: "siddharth-viswanath28"
   early_stopping: 20
   accelerator: cpu
   max_epochs: 100
+  wandb: True
 
 # default to old behavior, change working directory to experimental directory
 hydra:

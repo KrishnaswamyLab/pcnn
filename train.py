@@ -14,6 +14,7 @@ import torch
 from omegaconf import OmegaConf
 import pandas as pd
 import time
+import wandb
 
 def get_logger(exp_name, wandb_user):
     logger = WandbLogger(
@@ -44,6 +45,9 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     # set seed for random number generators in pytorch, numpy and python.random
     if cfg.get("seed"):
         pl.seed_everything(cfg.seed, workers=True)
+
+    if not cfg.trainer.wandb:
+        wandb.init(mode="disabled")
 
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)()
     
